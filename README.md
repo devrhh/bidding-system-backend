@@ -67,7 +67,7 @@ A real-time bidding system built with NestJS backend and React frontend, featuri
    DB_USERNAME=postgres
    DB_PASSWORD=password
    DB_NAME=bidding_system
-   FRONTEND_URL=http://localhost:3000
+   FRONTEND_URL=http://localhost:5173
    ```
 
 3. **Start PostgreSQL database**

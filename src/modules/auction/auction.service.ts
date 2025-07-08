@@ -92,7 +92,7 @@ export class AuctionService {
         const currentHighestBid = auction.currentHighestBid || auction.startingPrice;
         if (amount <= currentHighestBid) {
           throw new BadRequestException(
-            `Bid must be higher than current highest bid ($${currentHighestBid})`,
+            `Bid must be higher than current highest value ($${currentHighestBid})`,
           );
         }
 
@@ -147,7 +147,7 @@ export class AuctionService {
         return completeBid;
       });
     } catch (error) {
-      console.error('❌ Error in placeBid:', error);
+      console.error('Error in placeBid:', error);
       throw error;
     }
   }
@@ -193,7 +193,7 @@ export class AuctionService {
       relations: ['user'],
     });
 
-    console.log(`✅ Bid placed via queue: $${amount} on auction ${auctionId} by user ${userId}`);
+    console.log(`Bid placed via queue: $${amount} on auction ${auctionId} by user ${userId}`);
 
     return bid;
   }
@@ -231,7 +231,7 @@ export class AuctionService {
         name: auction.name,
         description: auction.description,
         startingPrice: auction.startingPrice,
-        currentHighestBid: auction.currentHighestBid || auction.startingPrice,
+        currentHighestBid: auction.currentHighestBid,
         timeLeft: auction.timeLeft,
         timeLeftFormatted: auction.timeLeftFormatted,
         isExpired: auction.isExpired,
@@ -309,7 +309,7 @@ export class AuctionService {
         // Emit WebSocket notification
         this.websocketGateway.emitAuctionExpired(auctionId);
         
-        console.log(`🕐 Auction ${auctionId} has expired`);
+        console.log(`Auction ${auctionId} has expired`);
       }
     } catch (error) {
       console.error(`Error handling auction expiration for ${auctionId}:`, error);

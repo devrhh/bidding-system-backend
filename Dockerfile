@@ -13,6 +13,9 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
+#Install npm
+RUN npm install
+
 # Build the application
 RUN npm run build
 
