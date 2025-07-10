@@ -23,7 +23,6 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: password
       DB_NAME: bidding_system
-      FRONTEND_URL: http://frontend:5173
     ports:
       - "3001:3001"
     depends_on:
@@ -33,7 +32,6 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
-
 volumes:
   postgres_data:
 

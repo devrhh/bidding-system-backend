@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Auction } from './auction.entity';
@@ -7,6 +7,41 @@ import { User } from '../users/users.entity';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { PlaceBidDto } from './dto/place-bid.dto';
 import { WebsocketGateway } from '../../common/websocket.gateway';
+
+export interface AuctionResult {
+  id: number;
+  name: string;
+  description: string;
+  startingPrice: number;
+  finalPrice: number;
+  totalBids: number;
+  winner: {
+    id: number;
+    name: string;
+    email: string;
+    amount: number;
+  } | null;
+  auctionEndTime: Date;
+  status: string;
+}
+
+export interface ActiveAuctionWithTimeLeft {
+  id: number;
+  name: string;
+  description: string;
+  startingPrice: number;
+  currentHighestBid: number;
+  timeLeft: number;
+  timeLeftFormatted: string;
+  isExpired: boolean;
+  totalBids: number;
+  highestBidder: {
+    id: number;
+    name: string;
+    amount: number;
+  } | null;
+  auctionEndTime: Date;
+}
 
 @Injectable()
 export class AuctionService {
@@ -44,6 +79,17 @@ export class AuctionService {
     // Schedule auction expiration
     this.scheduleAuctionExpiration(savedAuction.id, auctionEndTime);
     
+    // Emit new auction notification via WebSocket
+    this.websocketGateway.emitNewAuction({
+      auctionId: savedAuction.id,
+      name: savedAuction.name,
+      description: savedAuction.description,
+      startingPrice: savedAuction.startingPrice,
+      auctionEndTime: savedAuction.auctionEndTime,
+      timeLeft: savedAuction.timeLeft,
+      timeLeftFormatted: savedAuction.timeLeftFormatted,
+    });
+    
     return savedAuction;
   }
 
@@ -68,51 +114,43 @@ export class AuctionService {
     return auction;
   }
 
-  // SIMPLE BIDDING APPROACH - Basic validation without complex locking
+  // Placing bid logic
   async placeBid(placeBidDto: PlaceBidDto): Promise<Bid> {
     const { auctionId, userId, amount } = placeBidDto;
 
     try {
       return await this.dataSource.transaction(async (manager) => {
-        // 1. Get auction with current state
-        const auction = await manager.findOne(Auction, {
-          where: { id: auctionId, isActive: true },
-          relations: ['bids'],
-        });
+        // Fetch the auction
+        const auction = await manager.findOne(Auction, { where: { id: auctionId, isActive: true }, relations: ['bids'] });
+        if (!auction) throw new NotFoundException(`Auction with ID ${auctionId} not found`);
+        if (auction.isExpired) throw new BadRequestException('Auction has already ended');
 
-        if (!auction) {
-          throw new NotFoundException(`Auction with ID ${auctionId} not found`);
-        }
-
-        if (auction.isExpired) {
-          throw new BadRequestException('Auction has already ended');
-        }
-
-        // 2. Validate bid amount against current state
-        const currentHighestBid = auction.currentHighestBid || auction.startingPrice;
+        // check for bid amount
+        const currentHighestBid = auction.currentHighestBid ?? auction.startingPrice;
         if (amount <= currentHighestBid) {
-          throw new BadRequestException(
-            `Bid must be higher than current highest value ($${currentHighestBid})`,
-          );
+          throw new BadRequestException(`Bid must be higher than current highest value ($${currentHighestBid})`);
         }
 
-        // 3. Create the bid
+        // Atomic update for highest bid
+        const updateResult = await manager.createQueryBuilder()
+          .update(Auction)
+          .set({ currentHighestBid: amount })
+          .where("id = :auctionId AND isActive = true AND (currentHighestBid IS NULL OR currentHighestBid < :amount)", { auctionId, amount })
+          .execute();
+
+        if (updateResult.affected === 0) {
+          throw new BadRequestException('Bid was not high enough, or auction is not active.');
+        }
+
+        // Create the bid
         const bid = manager.create(Bid, {
           auctionId,
           userId,
           amount,
         });
-
         const savedBid = await manager.save(Bid, bid);
 
-        // 4. Update auction's highest bid
-        await manager.update(
-          Auction,
-          { id: auctionId },
-          { currentHighestBid: amount }
-        );
-
-        // 5. Get the complete bid with user details
+        // Get the complete bid with user details
         const completeBid = await manager.findOne(Bid, {
           where: { id: savedBid.id },
           relations: ['user'],
@@ -121,9 +159,8 @@ export class AuctionService {
         // Get the updated total bids count for this auction
         const totalBids = await manager.count(Bid, { where: { auctionId } });
 
-        console.log(`✅ Bid placed successfully: $${amount} on auction ${auctionId} by user ${userId}`);
 
-        // 6. Emit real-time update via WebSocket
+        // Emit real-time update via WebSocket
         this.websocketGateway.emitBidUpdate({
           auctionId,
           newHighestBid: amount,
@@ -131,6 +168,7 @@ export class AuctionService {
           bidderName: completeBid.user.firstName,
           timeLeft: auction.timeLeft,
           timeLeftFormatted: auction.timeLeftFormatted,
+          totalBids,
         });
 
         // Also emit auction update
@@ -147,7 +185,6 @@ export class AuctionService {
         return completeBid;
       });
     } catch (error) {
-      console.error('Error in placeBid:', error);
       throw error;
     }
   }
@@ -214,7 +251,7 @@ export class AuctionService {
     });
   }
 
-  async getActiveAuctionsWithTimeLeft(): Promise<any[]> {
+  async getActiveAuctionsWithTimeLeft(): Promise<ActiveAuctionWithTimeLeft[]> {
     const auctions = await this.auctionRepository.find({
       where: { isActive: true },
       relations: ['bids', 'bids.user'],
@@ -247,7 +284,7 @@ export class AuctionService {
   }
 
   // Get auction results (completed auctions)
-  async getAuctionResults(): Promise<any[]> {
+  async getAuctionResults(): Promise<AuctionResult[]> {
     const auctions = await this.auctionRepository.find({
       where: { isActive: false },
       relations: ['bids', 'bids.user'],
@@ -305,9 +342,6 @@ export class AuctionService {
       if (auction && !auction.isExpired) {
         // Mark auction as inactive
         await this.auctionRepository.update(auctionId, { isActive: false });
-        
-        // Emit WebSocket notification
-        this.websocketGateway.emitAuctionExpired(auctionId);
         
         console.log(`Auction ${auctionId} has expired`);
       }

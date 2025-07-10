@@ -6,25 +6,13 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-
-interface BidUpdateData {
-  auctionId: number;
-  newHighestBid: number;
-  bidderId: number;
-  bidderName: string;
-  timeLeft: number;
-  timeLeftFormatted: string;
-}
-
-interface AuctionUpdateData {
-  auctionId: number;
-  name: string;
-  currentHighestBid: number;
-  timeLeft: number;
-  timeLeftFormatted: string;
-  totalBids: number;
-  isExpired: boolean;
-}
+import {
+  BidUpdateData,
+  AuctionUpdateData,
+  NewAuctionData,
+  UserCountData,
+  WEBSOCKET_EVENTS,
+} from './websocket.constants';
 
 @WebSocketGateway({
   cors: {
@@ -44,37 +32,49 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     console.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('joinAuction')
+  @SubscribeMessage(WEBSOCKET_EVENTS.JOIN_AUCTION)
   handleJoinAuction(client: Socket, auctionId: number) {
     client.join(`auction_${auctionId}`);
     console.log(`Client ${client.id} joined auction ${auctionId}`);
   }
 
-  @SubscribeMessage('leaveAuction')
+  @SubscribeMessage(WEBSOCKET_EVENTS.LEAVE_AUCTION)
   handleLeaveAuction(client: Socket, auctionId: number) {
     client.leave(`auction_${auctionId}`);
     console.log(`Client ${client.id} left auction ${auctionId}`);
   }
 
-  emitBidUpdate(data: BidUpdateData) {
-    this.server.to(`auction_${data.auctionId}`).emit('bidUpdate', data);
-    this.server.emit('globalBidUpdate', data); // Emit to all connected clients
-    console.log(`Bid update emitted for auction ${data.auctionId}: $${data.newHighestBid}`);
+  emitBidUpdate(data: BidUpdateData & { timestamp?: number }) {
+    this.server.to(`auction_${data.auctionId}`).emit(WEBSOCKET_EVENTS.BID_UPDATE, {
+      ...data,
+      timestamp: Date.now(),
+    });
+    this.server.emit(WEBSOCKET_EVENTS.GLOBAL_BID_UPDATE, {
+      ...data,
+      timestamp: Date.now(),
+    });
   }
 
-  emitAuctionUpdate(data: AuctionUpdateData) {
-    this.server.to(`auction_${data.auctionId}`).emit('auctionUpdate', data);
-    this.server.emit('globalAuctionUpdate', data);
-    console.log(`Auction update emitted for auction ${data.auctionId}`);
+  emitAuctionUpdate(data: AuctionUpdateData & { timestamp?: number }) {
+    this.server.to(`auction_${data.auctionId}`).emit(WEBSOCKET_EVENTS.AUCTION_UPDATE, {
+      ...data,
+      timestamp: Date.now(),
+    });
+    this.server.emit(WEBSOCKET_EVENTS.GLOBAL_AUCTION_UPDATE, {
+      ...data,
+      timestamp: Date.now(),
+    });
   }
 
-  emitAuctionExpired(auctionId: number) {
-    this.server.to(`auction_${auctionId}`).emit('auctionExpired', { auctionId });
-    this.server.emit('globalAuctionExpired', { auctionId });
-    console.log(`Auction expired notification emitted for auction ${auctionId}`);
-  }
+
 
   emitUserCount(auctionId: number, count: number) {
-    this.server.to(`auction_${auctionId}`).emit('userCount', { auctionId, count });
+    const data: UserCountData = { auctionId, count };
+    this.server.to(`auction_${auctionId}`).emit(WEBSOCKET_EVENTS.USER_COUNT, data);
+  }
+
+  emitNewAuction(data: NewAuctionData) {
+    this.server.emit(WEBSOCKET_EVENTS.NEW_AUCTION, data);
+    console.log(`New auction notification emitted: ${data.name} (ID: ${data.auctionId})`);
   }
 } 

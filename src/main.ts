@@ -19,7 +19,7 @@ async function bootstrap() {
   
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 Bidding System Backend running on port ${port}`);
+  console.log(`Bidding System Backend running on port ${port}`);
 }
 
 bootstrap(); 

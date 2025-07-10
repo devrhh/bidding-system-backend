@@ -32,7 +32,6 @@ export class UsersService implements OnModuleInit {
       }
 
       await this.userRepository.save(users);
-      console.log('✅ Created 100 hardcoded users');
     }
   }
 
@@ -76,7 +75,6 @@ export class UsersService implements OnModuleInit {
     }
 
     const savedUsers = await this.userRepository.save(users);
-    console.log(`✅ Created ${count} users`);
     return savedUsers;
   }
 } 

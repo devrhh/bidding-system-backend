@@ -1,4 +1,4 @@
-# Use Node.js 18 Alpine as base image
+# # Use Node.js 18 Alpine as base image
 FROM node:18-alpine
 
 # Set working directory
