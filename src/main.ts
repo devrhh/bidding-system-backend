@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { APP_CONFIG } from './lib/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,7 +18,7 @@ async function bootstrap() {
     transform: true,
   }));
   
-  const port = process.env.PORT || 3001;
+  const port = APP_CONFIG.port;
   await app.listen(port);
   console.log(`Bidding System Backend running on port ${port}`);
 }

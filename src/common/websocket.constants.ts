@@ -28,19 +28,10 @@ export interface NewAuctionData {
   timeLeftFormatted: string;
 }
 
-export interface UserCountData {
-  auctionId: number;
-  count: number;
-}
-
-// WebSocket event names
 export const WEBSOCKET_EVENTS = {
   BID_UPDATE: 'bidUpdate',
-  GLOBAL_BID_UPDATE: 'globalBidUpdate',
   AUCTION_UPDATE: 'auctionUpdate',
-  GLOBAL_AUCTION_UPDATE: 'globalAuctionUpdate',
   NEW_AUCTION: 'newAuction',
-  USER_COUNT: 'userCount',
   JOIN_AUCTION: 'joinAuction',
   LEAVE_AUCTION: 'leaveAuction',
 } as const; 

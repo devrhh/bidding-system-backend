@@ -10,7 +10,6 @@ import {
   BidUpdateData,
   AuctionUpdateData,
   NewAuctionData,
-  UserCountData,
   WEBSOCKET_EVENTS,
 } from './websocket.constants';
 
@@ -49,10 +48,6 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
       ...data,
       timestamp: Date.now(),
     });
-    this.server.emit(WEBSOCKET_EVENTS.GLOBAL_BID_UPDATE, {
-      ...data,
-      timestamp: Date.now(),
-    });
   }
 
   emitAuctionUpdate(data: AuctionUpdateData & { timestamp?: number }) {
@@ -60,17 +55,6 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
       ...data,
       timestamp: Date.now(),
     });
-    this.server.emit(WEBSOCKET_EVENTS.GLOBAL_AUCTION_UPDATE, {
-      ...data,
-      timestamp: Date.now(),
-    });
-  }
-
-
-
-  emitUserCount(auctionId: number, count: number) {
-    const data: UserCountData = { auctionId, count };
-    this.server.to(`auction_${auctionId}`).emit(WEBSOCKET_EVENTS.USER_COUNT, data);
   }
 
   emitNewAuction(data: NewAuctionData) {

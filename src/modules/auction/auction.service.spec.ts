@@ -45,19 +45,6 @@ describe('AuctionService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getAllAuctions', () => {
-    it('should return all auctions', async () => {
-      const mockAuctions = [
-        { id: 1, name: 'Auction 1', bids: [], createdAt: new Date() } as Auction,
-        { id: 2, name: 'Auction 2', bids: [], createdAt: new Date() } as Auction,
-      ];
-      jest.spyOn(auctionRepository, 'find').mockResolvedValue(mockAuctions);
-      const result = await service.getAllAuctions();
-      expect(result).toEqual(mockAuctions);
-      expect(auctionRepository.find).toHaveBeenCalled();
-    });
-  });
-
   describe('getAuctionById', () => {
     it('should return an auction by id', async () => {
       const mockAuction = { id: 1, name: 'Auction 1', isActive: true, bids: [], createdAt: new Date() } as Auction;

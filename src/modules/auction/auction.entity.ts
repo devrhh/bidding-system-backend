@@ -30,19 +30,19 @@ export class Auction {
   @OneToMany(() => Bid, bid => bid.auction)
   bids: Bid[];
 
-  // Computed property to check if auction has ended
+  // check if auction has ended
   get isExpired(): boolean {
     return new Date() > this.auctionEndTime;
   }
 
-  // Computed property to get time left in seconds
+  // get time left in seconds
   get timeLeft(): number {
     const now = new Date();
     const endTime = new Date(this.auctionEndTime);
     return Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
   }
 
-  // Computed property to get time left in a readable format
+  // get time left in a readable format
   get timeLeftFormatted(): string {
     const seconds = this.timeLeft;
     if (seconds <= 0) return 'Expired';
