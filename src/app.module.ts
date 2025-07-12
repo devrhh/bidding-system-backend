@@ -1,3 +1,4 @@
+import { APP_CONFIG, DB_CONFIG } from './lib/config';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -13,15 +14,10 @@ import { AppController } from './app.controller';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT) || 5432,
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_NAME || 'bidding_system',
+      ...DB_CONFIG,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: process.env.NODE_ENV !== 'production',
-      logging: process.env.NODE_ENV !== 'production',
-      ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      synchronize: APP_CONFIG.nodeEnv !== 'production',
+      logging: APP_CONFIG.nodeEnv !== 'production',
     }),
     AuctionModule,
     UsersModule,

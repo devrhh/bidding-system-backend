@@ -22,5 +22,5 @@ export class CreateAuctionDto {
   @IsNumber()
   @Min(1)
   @Transform(({ value }) => parseInt(value))
-  durationMinutes?: number; // Duration in minutes from now
+  durationMinutes?: number;
 } 
